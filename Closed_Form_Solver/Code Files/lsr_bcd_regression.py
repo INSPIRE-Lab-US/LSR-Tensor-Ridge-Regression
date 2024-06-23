@@ -8,6 +8,7 @@ from sklearn.linear_model import SGDRegressor
 #training_data: X
 #training_labels: Y
 #hypers: hyperparameters
+
 def lsr_bcd_regression(lsr_ten, training_data: np.ndarray, training_labels: np.ndarray, hypers: dict, intercept = False):
     #Get LSR Tensor Information and other hyperparameters
     shape, ranks, sep_rank, order = lsr_ten.shape, lsr_ten.ranks, lsr_ten.separation_rank, lsr_ten.order
@@ -22,9 +23,15 @@ def lsr_bcd_regression(lsr_ten, training_data: np.ndarray, training_labels: np.n
 
     #Store objective function values
     objective_function_values = np.ones(shape = (max_iter, sep_rank, len(ranks) + 1)) * np.inf
+    
+    #store gradient norms 
+    gradient_values = np.ones(shape = (max_iter, sep_rank, len(ranks) + 1)) * np.inf
 
     #Normalized Estimation Error
     iterations_normalized_estimation_error = np.zeros(shape = (max_iter,))
+    
+    #saving iterate level information
+    iterate_level_values = [[[[]for _ in range(max_iter) ]for _ in range ((len(ranks)+1))] for _ in range(sep_rank)]
 
     #Run at most max_iter iterations of Block Coordinate Descent
     for iteration in range(max_iter):
@@ -56,6 +63,7 @@ def lsr_bcd_regression(lsr_ten, training_data: np.ndarray, training_labels: np.n
 
                 #Shape Bk1 as needed
                 Bk1 = np.reshape(Bk1, (shape[k], ranks[k]), order = 'F')
+                iterate_level_values[s][k][iteration] = Bk1
 
 
                 #Update Residuals and store updated factor matrix
@@ -73,6 +81,15 @@ def lsr_bcd_regression(lsr_ten, training_data: np.ndarray, training_labels: np.n
                 expanded_lsr = np.reshape(expanded_lsr, X[0].shape, order = 'F')
                 objective_function_value = objective_function_tensor(y, X, expanded_lsr, lambda1)# CHECK THISSSS______________________________
                 objective_function_values[iteration, s, k] = objective_function_value
+                
+                #Calculate Gradient Values
+                bk = np.reshape(Bk, (-1, 1), order = 'F') #Flatten Factor Matrix Column Wise
+                Omega = X_tilde
+                z = b if intercept else 0
+                gradient_value = (-2 * Omega.T) @ (y_tilde.reshape(-1,1) - Omega @ bk  - z) + (2 * lambda1 * bk)
+                
+                #Store Gradient Values
+                gradient_values[iteration, s, k] = np.linalg.norm(gradient_value, ord = 'fro')
 
                 #Print Objective Function Values
                 # print(f"Iteration: {iteration}, Separation Rank: {s}, Factor Matrix: {k}, Objective Function Value: {objective_function_value}")
@@ -89,7 +106,10 @@ def lsr_bcd_regression(lsr_ten, training_data: np.ndarray, training_labels: np.n
         Gk = lsr_ten.get_core_matrix()
         Gk1 = np.reshape(core_tensor_model.coef_, ranks, order = 'F')
         if intercept: b = core_tensor_model.intercept_
-
+        
+        #saving iterate
+        iterate_level_values[0][len(ranks)][iteration] = Gk1
+        
         #Update Residuals and store updated Core Tensor
         core_residual = np.linalg.norm(Gk1 - Gk)
         updated_core_tensor = Gk1
@@ -105,9 +125,21 @@ def lsr_bcd_regression(lsr_ten, training_data: np.ndarray, training_labels: np.n
         if intercept: b = lsr_ten.get_intercept()
         expanded_lsr = lsr_ten.expand_to_tensor()
         expanded_lsr = np.reshape(expanded_lsr, X[0].shape, order = 'F')
+        
+        #saving the reconstruction
+        iterate_level_values[1][len(ranks)][iteration] = expanded_lsr
 
         objective_function_value = objective_function_tensor(y, X, expanded_lsr, lambda1, b if intercept else None)
         objective_function_values[iteration, :, (len(ranks))] = objective_function_value
+        
+        #Calculate Gradient Values
+        g = np.reshape(Gk, (-1, 1), order = 'F') #Flatten Core Matrix Column Wise
+        Omega = X_tilde
+        z = b if intercept else 0
+        gradient_value = (-2 * Omega.T) @ (y_tilde.reshape(-1,1) - Omega @ g  - z) + (2 * lambda1 * g)
+        
+        #Store Gradient Value
+        gradient_values[iteration, :, (len(ranks))] = np.linalg.norm(gradient_value, ord='fro')
 
         #Print Objective Function Value
         # print(f"BCD Regression, Iteration: {iteration}, Core Tensor, Objective Function Value: {objective_function_value}")
@@ -118,7 +150,8 @@ def lsr_bcd_regression(lsr_ten, training_data: np.ndarray, training_labels: np.n
         # print(f"Value of Stopping Criteria: {diff}")
         # print(f"Expanded Tensor: {expanded_lsr}")
         # print('------------------------------------------------------------------------------------------')
-        if diff < threshold: break
-
-
-    return lsr_ten, objective_function_values
+        if diff < threshold: 
+            print('stopping_criterion_reached')
+            break
+            
+    return lsr_ten, objective_function_values, gradient_values, iterate_level_values
