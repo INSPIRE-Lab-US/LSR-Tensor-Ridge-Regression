@@ -16,6 +16,8 @@ def KFoldCV(X_train: np.ndarray, Y_train: np.ndarray, alphas, k_folds, hypers, B
   validation_nmse_losses = np.zeros(shape = (k_folds, len(alphas)))
   validation_correlations = np.zeros(shape = (k_folds, len(alphas)))
   validation_R2_scores = np.zeros(shape = (k_folds, len(alphas)))
+  
+  #saving the
 
   #Define LSR Tensor Hyperparameters
   ranks = hypers['ranks']
@@ -38,7 +40,7 @@ def KFoldCV(X_train: np.ndarray, Y_train: np.ndarray, alphas, k_folds, hypers, B
     for index1, alpha1 in enumerate(alphas):
       hypers['weight_decay'] = alpha1
 
-      lsr_ten, objective_function_values,gradient_values,iterate_level_values = lsr_bcd_regression(lsr_tensors[index1][fold], X_train_updated, Y_train_updated, hypers, intercept = need_intercept)
+      lsr_ten, objective_function_values,gradient_values,iterate_level_values,iterate_level_reconstructed_tensor = lsr_bcd_regression(lsr_tensors[index1][fold], X_train_updated, Y_train_updated, hypers, intercept = need_intercept)
       expanded_lsr = lsr_ten.expand_to_tensor()
       expanded_lsr = np.reshape(expanded_lsr, X_validation[0].shape, order='F')
       Y_validation_predicted = inner_product(np.transpose(X_validation, (0, 2, 1)), expanded_lsr.flatten(order ='F')) + lsr_ten.b
@@ -77,12 +79,14 @@ def KFoldCV(X_train: np.ndarray, Y_train: np.ndarray, alphas, k_folds, hypers, B
   #Get alpha value that performs the best
   flattened_avg_validation_nmse_losses = average_validation_nmse_losses.flatten()
   lambda1 = alphas[np.argmin(flattened_avg_validation_nmse_losses)]
+  
   if B_tensored is not None:
     return lambda1, validation_normalized_estimation_error, validation_nmse_losses, validation_correlations, validation_R2_scores, objective_function_information,gradient_information
   else: 
     validation_normalized_estimation_error = np.inf
     normalized_estimation_error = np.inf
     return lambda1, validation_normalized_estimation_error, validation_nmse_losses, validation_correlations, validation_R2_scores, objective_function_information,gradient_information
+
 #Run KFold Cross Validation
 def KFoldCV_Vectorized(X_train, Y_train, B_tensored: np.ndarray, alphas, k_folds, intercept = False):
     #Flatten B_tensored

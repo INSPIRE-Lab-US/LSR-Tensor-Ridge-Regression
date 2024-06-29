@@ -127,7 +127,7 @@ def lsr_bcd_regression(lsr_ten, training_data: np.ndarray, training_labels: np.n
         expanded_lsr = np.reshape(expanded_lsr, X[0].shape, order = 'F')
         
         #saving the reconstruction
-        iterate_level_values[1][len(ranks)][iteration] = expanded_lsr
+        iterate_level_reconstructed_tensor = expanded_lsr
 
         objective_function_value = objective_function_tensor(y, X, expanded_lsr, lambda1, b if intercept else None)
         objective_function_values[iteration, :, (len(ranks))] = objective_function_value
@@ -154,4 +154,4 @@ def lsr_bcd_regression(lsr_ten, training_data: np.ndarray, training_labels: np.n
             print('stopping_criterion_reached')
             break
             
-    return lsr_ten, objective_function_values, gradient_values, iterate_level_values
+    return lsr_ten, objective_function_values, gradient_values, iterate_level_values,iterate_level_reconstructed_tensor

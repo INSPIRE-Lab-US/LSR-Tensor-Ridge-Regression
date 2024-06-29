@@ -15,7 +15,7 @@ def train_test(X_train: np.ndarray, Y_train: np.ndarray, X_test: np.ndarray, Y_t
 
   #Construct LSR Tensor
   lsr_tensor = LSR_tensor_dot(shape = LSR_tensor_dot_shape, ranks = ranks, separation_rank = separation_rank, intercept = need_intercept)
-  lsr_tensor, objective_function_values,gradient_values, iterate_level_values = lsr_bcd_regression(lsr_tensor, X_train, Y_train, hypers,intercept = need_intercept)
+  lsr_tensor, objective_function_values,gradient_values, iterate_level_values,iterate_level_reconstructed_tensor = lsr_bcd_regression(lsr_tensor, X_train, Y_train, hypers,intercept = need_intercept)
   expanded_lsr = lsr_tensor.expand_to_tensor()
   expanded_lsr = np.reshape(expanded_lsr, X_train[0].shape, order = 'F')
 
@@ -31,10 +31,10 @@ def train_test(X_train: np.ndarray, Y_train: np.ndarray, X_test: np.ndarray, Y_t
   print("Y Test Predicted: ", Y_test_predicted.flatten())
   print("Y Test Actual: ", Y_test.flatten())
   if B_tensored is not None:
-    return normalized_estimation_error, test_nmse_loss, test_R2_loss, test_correlation, objective_function_values,gradient_values,iterate_level_values
+    return normalized_estimation_error, test_nmse_loss, test_R2_loss, test_correlation, objective_function_values,gradient_values,iterate_level_values,iterate_level_reconstructed_tensor
   else:
     normalized_estimation_error = np.inf
-    return normalized_estimation_error, test_nmse_loss, test_R2_loss, test_correlation, objective_function_values,gradient_values,iterate_level_values
+    return normalized_estimation_error, test_nmse_loss, test_R2_loss, test_correlation, objective_function_values,gradient_values,iterate_level_values,iterate_level_reconstructed_tensor
   
 #Given the Best Lambda found by KFoldCV, train a LRR model with that best lambda and generate test metrics!
 def TrainTest_Vectorized(X_train, Y_train, X_test, Y_test, lambda1,B_tensored = None, intercept = False):
