@@ -15,26 +15,38 @@ def train_test(X_train: np.ndarray, Y_train: np.ndarray, X_test: np.ndarray, Y_t
 
   #Construct LSR Tensor
   lsr_tensor = LSR_tensor_dot(shape = LSR_tensor_dot_shape, ranks = ranks, separation_rank = separation_rank, intercept = need_intercept)
-  lsr_tensor, objective_function_values,gradient_values, iterate_level_values,iterate_level_reconstructed_tensor = lsr_bcd_regression(lsr_tensor, X_train, Y_train, hypers,intercept = need_intercept)
-  expanded_lsr = lsr_tensor.expand_to_tensor()
-  expanded_lsr = np.reshape(expanded_lsr, X_train[0].shape, order = 'F')
+  
+  try:
+    lsr_tensor, objective_function_values,gradient_values, iterate_level_values,factor_core_iteration = lsr_bcd_regression(lsr_tensor, X_train, Y_train, hypers,intercept = need_intercept)
+    
+    expanded_lsr = lsr_tensor.expand_to_tensor()
+    expanded_lsr = np.reshape(expanded_lsr, X_train[0].shape, order = 'F')
 
-  Y_test_predicted = inner_product(np.transpose(X_test, (0, 2, 1)), expanded_lsr.flatten(order ='F')) + lsr_tensor.b + Y_train_mean
+    Y_test_predicted = inner_product(np.transpose(X_test, (0, 2, 1)), expanded_lsr.flatten(order ='F')) + lsr_tensor.b + Y_train_mean
 
 
-  print(f"Y_test_predicted: {Y_test_predicted.flatten()}, Y_test: {Y_test.flatten()}")
-  test_nmse_loss = np.sum(np.square((Y_test_predicted.flatten() - Y_test.flatten()))) / np.sum(np.square(Y_test.flatten()))
-  if B_tensored is not None: normalized_estimation_error = ((np.linalg.norm(expanded_lsr - B_tensored)) ** 2) /  ((np.linalg.norm(B_tensored)) ** 2)
-  test_R2_loss = R2(Y_test.flatten(), Y_test_predicted.flatten())
-  test_correlation = np.corrcoef(Y_test_predicted.flatten(), Y_test.flatten())[0, 1]
+    print(f"Y_test_predicted: {Y_test_predicted.flatten()}, Y_test: {Y_test.flatten()}")
+    test_nmse_loss = np.sum(np.square((Y_test_predicted.flatten() - Y_test.flatten()))) / np.sum(np.square(Y_test.flatten()))
+    if B_tensored is not None: normalized_estimation_error = ((np.linalg.norm(expanded_lsr - B_tensored)) ** 2) /  ((np.linalg.norm(B_tensored)) ** 2)
+    test_R2_loss = R2(Y_test.flatten(), Y_test_predicted.flatten())
+    test_correlation = np.corrcoef(Y_test_predicted.flatten(), Y_test.flatten())[0, 1]
+  except Exception as e:
+    print('An Error encountered while Testing0')
+    normalized_estimation_error = np.nan
+    test_nmse_loss = np.nan 
+    test_correlation = np.nan
+    test_R2_loss = np.nan
+    objective_function_values = np.nan
+    gradient_values = np.nan
+    iterate_level_values = np.nan
+    factor_core_iteration = np.nan
 
-  print("Y Test Predicted: ", Y_test_predicted.flatten())
-  print("Y Test Actual: ", Y_test.flatten())
+
   if B_tensored is not None:
-    return normalized_estimation_error, test_nmse_loss, test_R2_loss, test_correlation, objective_function_values,gradient_values,iterate_level_values,iterate_level_reconstructed_tensor
+    return normalized_estimation_error, test_nmse_loss, test_R2_loss, test_correlation, objective_function_values,gradient_values,iterate_level_values,factor_core_iteration
   else:
     normalized_estimation_error = np.inf
-    return normalized_estimation_error, test_nmse_loss, test_R2_loss, test_correlation, objective_function_values,gradient_values,iterate_level_values,iterate_level_reconstructed_tensor
+    return normalized_estimation_error, test_nmse_loss, test_R2_loss, test_correlation, objective_function_values,gradient_values,iterate_level_values,factor_core_iteration
   
 #Given the Best Lambda found by KFoldCV, train a LRR model with that best lambda and generate test metrics!
 def TrainTest_Vectorized(X_train, Y_train, X_test, Y_test, lambda1,B_tensored = None, intercept = False):

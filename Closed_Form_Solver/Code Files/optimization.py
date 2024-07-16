@@ -25,6 +25,31 @@ def objective_function_tensor(y: np.ndarray, X: np.ndarray, B: np.ndarray, alpha
     else:
       function = (np.linalg.norm(y - I) ** 2) + (alpha * (np.linalg.norm(B) ** 2))
     return function
+  
+#Calculate the objective function value with the separable regularizing term
+def objective_function_tensor_sep(y: np.ndarray, X: np.ndarray, B: np.ndarray,lsr_ten, alpha,b = None):
+    I = inner_product(X, B).flatten()
+    y = y.flatten()
+    B = B.flatten()
+    regularizer = 0
+    
+    #developing the separable regularizing term
+   
+    separation = len(lsr_ten.factor_matrices)
+    tucker = len(lsr_ten.factor_matrices[0])
+    
+    for s in range(separation):
+       for k in range(tucker):
+          regularizer += (np.linalg.norm(lsr_ten.factor_matrices[s][k])**2)
+    regularizer = regularizer + (np.linalg.norm(lsr_ten.core_tensor)**2)
+
+    if b is not None:
+      b = b.flatten()
+      function = (np.linalg.norm(y - I -b) ** 2) + (alpha * regularizer)
+    else:
+      function = (np.linalg.norm(y - I) ** 2) + (alpha * regularizer)
+    return function
+
 
 #Calculate x* and p* for Objective Function(Tensor Case)
 #X_train is a Tensor of samples x m x n
